@@ -53,7 +53,7 @@ export default function ChatWindow({ conversationId, onBack }: any) {
   const [hoveredMsg, setHoveredMsg] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
-  const [isNearBottom, setIsNearBottom] = useState(true);
+  // const [isNearBottom, setIsNearBottom] = useState(true);
   const [showNewBtn, setShowNewBtn] = useState(false);
 
   const EMOJIS = [
@@ -69,47 +69,81 @@ export default function ChatWindow({ conversationId, onBack }: any) {
     if (!el) return;
 
     const handleScroll = () => {
-      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+      const threshold = 5; // very strict
 
-      setIsNearBottom(nearBottom);
+      const atBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
 
-      if (nearBottom) {
+      if (atBottom) {
         setShowNewBtn(false);
+
+        if (conversationId && user) {
+          markAsRead({
+            conversationId,
+            clerkId: user.id,
+          });
+        }
       }
     };
 
     el.addEventListener("scroll", handleScroll);
     return () => el.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [conversationId, user]);
 
   const prevMsgCount = useRef(0);
 
   const messageCount = messages?.length ?? 0;
 
   useEffect(() => {
-    if (!messages || !user) return;
+    if (!messages || !user || !containerRef.current) return;
 
-    const isNewMessage = messageCount > prevMsgCount.current;
-    prevMsgCount.current = messageCount;
+    const el = containerRef.current;
 
-    if (!isNewMessage) return;
+    const newCount = messages.length;
+    const oldCount = prevMsgCount.current;
 
-    const lastMessage = messages[messages.length - 1];
+    if (newCount <= oldCount) return;
+
+    const lastMessage = messages[newCount - 1];
     const isMyMessage = lastMessage.senderId === user.id;
 
-    if (!isNearBottom && !isMyMessage) {
+    prevMsgCount.current = newCount;
+
+    const threshold = 5;
+    const atBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+
+    // If I sent message → always scroll
+    if (isMyMessage) {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: "smooth",
+      });
+      return;
+    }
+
+    // If NOT at bottom → show button
+    if (!atBottom) {
       setShowNewBtn(true);
     }
-  }, [messageCount, isNearBottom, user?.id]);
+  }, [messages]);
 
   useEffect(() => {
-    if (isNearBottom && conversationId && user) {
+    if (!containerRef.current || !conversationId || !user) return;
+
+    const el = containerRef.current;
+    const threshold = 10;
+
+    const isAtBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+
+    if (isAtBottom) {
       markAsRead({
         conversationId,
         clerkId: user.id,
       });
     }
-  }, [isNearBottom, messageCount]);
+  }, [messageCount]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -233,10 +267,16 @@ export default function ChatWindow({ conversationId, onBack }: any) {
         {showNewBtn && (
           <button
             onClick={() => {
-              bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+              if (!containerRef.current) return;
+
+              containerRef.current.scrollTo({
+                top: containerRef.current.scrollHeight,
+                behavior: "smooth",
+              });
+
               setShowNewBtn(false);
             }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-4 py-2 rounded-full shadow-lg animate-bounce"
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-4 py-2 rounded-full shadow-lg"
           >
             ↓ New messages
           </button>
