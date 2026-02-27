@@ -30,7 +30,7 @@ Create a .env.local file:
 
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_key
 CLERK_SECRET_KEY=your_clerk_secret
-CONVEX_DEPLOYMENT=your_convex_deployment
+CONVEX_DEPLOYMENT=https://live-chat-app-psi.vercel.app/
 NEXT_PUBLIC_CONVEX_URL=your_convex_url
 
 4️⃣ Start Convex
